@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alzes Tracker – BR & NA</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%236aa1ff;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%2363e2b7;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='14' fill='url(%23grad)'/%3E%3Ctext x='16' y='20' font-family='Arial, sans-serif' font-size='14' font-weight='bold' text-anchor='middle' fill='white'%3EA%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="container header">
+    <div class="brand">
+      <h1>Alzes Tracker</h1>
+      <p class="subtitle">Registre e visualize seus Alzes diários (BR & NA)</p>
+    </div>
+    <div class="actions">
+      <button id="toggleThemeBtn" class="btn ghost" aria-pressed="false" aria-label="Alternar tema">
+        🌙 Tema
+      </button>
+      <button id="exportJsonBtn" class="btn ghost" aria-label="Exportar backup JSON">
+        ⬇️ Backup JSON
+      </button>
+    </div>
+  </header>
+
+  <main class="container main">
+    <section class="card" aria-labelledby="input-title">
+      <div class="card-header">
+        <h2 id="input-title">Adicionar registro</h2>
+      </div>
+      <form id="entryForm" class="grid-form" novalidate>
+        <div class="field">
+          <label for="dateInput">Data (DD-MM-YYYY)</label>
+          <input type="text" id="dateInput" name="date" placeholder="ex.: 10-10-2025" inputmode="numeric" autocomplete="off" required />
+        </div>
+        <div class="field">
+          <label for="brInput">Alzes BR</label>
+          <input type="number" id="brInput" name="alzes_BR" min="0" step="1" placeholder="0" required />
+        </div>
+        <div class="field">
+          <label for="naInput">Alzes NA</label>
+          <input type="number" id="naInput" name="alzes_NA" min="0" step="1" placeholder="0" required />
+        </div>
+        <div class="field field-notes">
+          <label for="notesInput">Notas (opcional)</label>
+          <input type="text" id="notesInput" name="notes" placeholder="Observações do dia" />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="addBtn">Adicionar</button>
+          <button type="button" class="btn" id="clearFormBtn">Limpar</button>
+        </div>
+        <p id="formError" class="error" role="alert" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="filters-title">
+      <div class="card-header">
+        <h2 id="filters-title">Filtros e busca</h2>
+      </div>
+      <div class="filters">
+        <div class="field">
+          <label for="dateStart">Início</label>
+          <input type="text" id="dateStart" placeholder="DD-MM-YYYY" inputmode="numeric" />
+        </div>
+        <div class="field">
+          <label for="dateEnd">Fim</label>
+          <input type="text" id="dateEnd" placeholder="DD-MM-YYYY" inputmode="numeric" />
+        </div>
+        <div class="field">
+          <label for="searchDate">Busca rápida por data</label>
+          <input type="text" id="searchDate" placeholder="ex.: 10-10-2025" />
+        </div>
+        <div class="field">
+          <label for="viewMode">Visão</label>
+          <select id="viewMode" aria-label="Modo de visualização">
+            <option value="daily" selected>Diária</option>
+            <option value="monthly">Mensal (soma por mês)</option>
+          </select>
+        </div>
+        <div class="filters-actions">
+          <button id="applyFiltersBtn" class="btn">Aplicar</button>
+          <button id="clearFiltersBtn" class="btn ghost">Limpar filtros</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="summary-title">
+      <div class="card-header">
+        <h2 id="summary-title">Totais e resumos</h2>
+      </div>
+      <div id="summary" class="summary"></div>
+    </section>
+
+    <section class="card" aria-labelledby="table-title">
+      <div class="card-header table-header">
+        <h2 id="table-title">Registros</h2>
+        <div class="table-actions">
+          <button id="exportCsvBtn" class="btn">Exportar CSV</button>
+          <label for="importCsvInput" class="btn ghost" role="button" aria-label="Importar CSV">Importar CSV</label>
+          <input id="importCsvInput" type="file" accept=".csv" hidden />
+          <button id="deleteSelectedBtn" class="btn danger ghost">Excluir selecionados</button>
+        </div>
+      </div>
+      <div class="responsive-table" id="tableContainer">
+        <table aria-describedby="table-title">
+          <thead>
+            <tr>
+              <th scope="col"><input type="checkbox" id="selectAll" aria-label="Selecionar todos" /></th>
+              <th scope="col" data-sort="date">Data</th>
+              <th scope="col" data-sort="br">Alzes BR</th>
+              <th scope="col" data-sort="na">Alzes NA</th>
+              <th scope="col" data-sort="total">Total do dia</th>
+              <th scope="col">Notas</th>
+              <th scope="col" class="actions-col">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTbody">
+            <!-- linhas geradas via JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="chart-title">
+      <div class="card-header">
+        <h2 id="chart-title">Gráfico</h2>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="alzesChart" aria-label="Gráfico de linhas dos Alzes" role="img"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <footer class="container footer">
+    <p>Dados salvos localmente no navegador. Chave: <code>alzes_records_v1</code></p>
+  </footer>
+
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
+
