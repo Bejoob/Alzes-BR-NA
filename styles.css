@@ -135,13 +135,19 @@ body {
   padding: 12px;
 }
 .summary .value { font-size: 1.25rem; font-weight: 700; }
+.summary .value.positive { color: var(--accent); }
+.summary .value.negative { color: var(--danger); }
 .summary .label { color: var(--muted); font-size: 0.9rem; }
+
+/* Estilos para rendimento na tabela */
+td.positive { color: var(--accent); font-weight: 600; }
+td.negative { color: var(--danger); font-weight: 600; }
 
 .table-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .table-actions { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
 
 .responsive-table { width: 100%; overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+table { width: 100%; border-collapse: collapse; min-width: 800px; }
 thead th { text-align: left; font-size: 0.9rem; color: var(--muted); font-weight: 600; }
 th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
 tbody tr:hover { background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
@@ -179,6 +185,10 @@ td .row-actions { display: flex; gap: 8px; }
   .field-notes { grid-column: span 2; }
   .filters { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; }
   .summary { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 900px) {
+  .summary { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* Light scrollbars */

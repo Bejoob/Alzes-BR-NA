@@ -36,12 +36,12 @@
           <input type="text" id="dateInput" name="date" placeholder="ex.: 10-10-2025" inputmode="numeric" autocomplete="off" required />
         </div>
         <div class="field">
-          <label for="brInput">Alzes BR</label>
-          <input type="number" id="brInput" name="alzes_BR" min="0" step="1" placeholder="0" required />
+          <label for="brInput">Valor atual BR (no baú)</label>
+          <input type="number" id="brInput" name="alzes_BR" step="1" placeholder="ex: 2100" required />
         </div>
         <div class="field">
-          <label for="naInput">Alzes NA</label>
-          <input type="number" id="naInput" name="alzes_NA" min="0" step="1" placeholder="0" required />
+          <label for="naInput">Valor atual NA (no baú)</label>
+          <input type="number" id="naInput" name="alzes_NA" step="1" placeholder="ex: 1500" required />
         </div>
         <div class="field field-notes">
           <label for="notesInput">Notas (opcional)</label>
@@ -109,9 +109,11 @@
             <tr>
               <th scope="col"><input type="checkbox" id="selectAll" aria-label="Selecionar todos" /></th>
               <th scope="col" data-sort="date">Data</th>
-              <th scope="col" data-sort="br">Alzes BR</th>
-              <th scope="col" data-sort="na">Alzes NA</th>
-              <th scope="col" data-sort="total">Total do dia</th>
+              <th scope="col" data-sort="br">Valor BR (baú)</th>
+              <th scope="col" data-sort="na">Valor NA (baú)</th>
+              <th scope="col" data-sort="total">Total (baú)</th>
+              <th scope="col" data-sort="rendimento-br">Rendimento BR</th>
+              <th scope="col" data-sort="rendimento-na">Rendimento NA</th>
               <th scope="col">Notas</th>
               <th scope="col" class="actions-col">Ações</th>
             </tr>

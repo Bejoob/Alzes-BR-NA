@@ -209,7 +209,7 @@ function parseCSV(text) {
     const br = Number(parts[colIdx.br] || 0);
     const na = Number(parts[colIdx.na] || 0);
     const notes = (colIdx.notes >= 0 ? parts[colIdx.notes] : '') || '';
-    if (!date || parseDateString(date) === null || br < 0 || na < 0) continue;
+    if (!date || parseDateString(date) === null) continue;
     out.push({ date, br, na, notes });
   }
   return out;
@@ -224,7 +224,9 @@ function renderTable() {
   const tbody = qs('#recordsTbody');
   tbody.innerHTML = '';
   const rows = state.filtered;
-  for (const r of rows) {
+  
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
     const tr = document.createElement('tr');
 
     const tdSel = document.createElement('td');
@@ -238,13 +240,31 @@ function renderTable() {
     tdDate.textContent = r.date;
 
     const tdBr = document.createElement('td');
-    tdBr.textContent = r.br;
+    tdBr.textContent = r.br.toLocaleString();
 
     const tdNa = document.createElement('td');
-    tdNa.textContent = r.na;
+    tdNa.textContent = r.na.toLocaleString();
 
     const tdTotal = document.createElement('td');
-    tdTotal.textContent = r.br + r.na;
+    tdTotal.textContent = (r.br + r.na).toLocaleString();
+
+    // Calcular rendimento do dia (diferença com o dia anterior)
+    const tdRendimentoBR = document.createElement('td');
+    const tdRendimentoNA = document.createElement('td');
+    let rendimentoBR = 0;
+    let rendimentoNA = 0;
+    
+    if (i < rows.length - 1) {
+      const diaAnterior = rows[i + 1]; // próximo item na lista (mais antigo)
+      rendimentoBR = r.br - diaAnterior.br;
+      rendimentoNA = r.na - diaAnterior.na;
+    }
+    
+    tdRendimentoBR.textContent = rendimentoBR > 0 ? `+${rendimentoBR.toLocaleString()}` : rendimentoBR.toLocaleString();
+    tdRendimentoBR.className = rendimentoBR > 0 ? 'positive' : rendimentoBR < 0 ? 'negative' : '';
+    
+    tdRendimentoNA.textContent = rendimentoNA > 0 ? `+${rendimentoNA.toLocaleString()}` : rendimentoNA.toLocaleString();
+    tdRendimentoNA.className = rendimentoNA > 0 ? 'positive' : rendimentoNA < 0 ? 'negative' : '';
 
     const tdNotes = document.createElement('td');
     tdNotes.textContent = r.notes || '';
@@ -264,7 +284,7 @@ function renderTable() {
     actions.append(editBtn, delBtn);
     tdActions.appendChild(actions);
 
-    tr.append(tdSel, tdDate, tdBr, tdNa, tdTotal, tdNotes, tdActions);
+    tr.append(tdSel, tdDate, tdBr, tdNa, tdTotal, tdRendimentoBR, tdRendimentoNA, tdNotes, tdActions);
     tbody.appendChild(tr);
   }
 }
@@ -272,19 +292,64 @@ function renderTable() {
 function renderSummary() {
   const wrap = qs('#summary');
   const data = state.filtered;
-  const totalBR = data.reduce((s, r) => s + r.br, 0);
-  const totalNA = data.reduce((s, r) => s + r.na, 0);
-  const total = totalBR + totalNA;
+  
+  if (data.length === 0) {
+    wrap.innerHTML = '<div class="pill"><div class="value">0</div><div class="label">Nenhum registro</div></div>';
+    return;
+  }
+  
+  // Pegar o valor mais recente (primeiro da lista ordenada)
+  const ultimoRegistro = data[0];
+  const valorAtualBR = ultimoRegistro.br;
+  const valorAtualNA = ultimoRegistro.na;
+  const valorTotalAtual = valorAtualBR + valorAtualNA;
+  
+  // Calcular rendimento total (diferença entre o primeiro e último registro)
+  let rendimentoTotal = 0;
+  if (data.length > 1) {
+    const primeiroRegistro = data[data.length - 1]; // último da lista (mais antigo)
+    const rendimentoBR = valorAtualBR - primeiroRegistro.br;
+    const rendimentoNA = valorAtualNA - primeiroRegistro.na;
+    rendimentoTotal = rendimentoBR + rendimentoNA;
+  }
+  
+  // Calcular média de rendimento diário
   const count = data.length || 1;
-  const avgBR = Math.round(totalBR / count);
-  const avgNA = Math.round(totalNA / count);
+  const avgRendimento = Math.round(rendimentoTotal / count);
+  
+  // Formatação para rendimento
+  const formatRendimento = (value) => {
+    if (value > 0) return `+${value.toLocaleString()}`;
+    if (value < 0) return value.toLocaleString();
+    return '0';
+  };
+  
+  const getRendimentoClass = (value) => {
+    if (value > 0) return 'positive';
+    if (value < 0) return 'negative';
+    return '';
+  };
+
+  // Calcular rendimento separado para BR e NA
+  let rendimentoBR = 0;
+  let rendimentoNA = 0;
+  if (data.length > 1) {
+    const primeiroRegistro = data[data.length - 1]; // último da lista (mais antigo)
+    rendimentoBR = valorAtualBR - primeiroRegistro.br;
+    rendimentoNA = valorAtualNA - primeiroRegistro.na;
+  }
+  
+  // Calcular média de rendimento diário separada
+  const avgRendimentoBR = Math.round(rendimentoBR / count);
+  const avgRendimentoNA = Math.round(rendimentoNA / count);
 
   wrap.innerHTML = `
-    <div class="pill"><div class="value">${totalBR.toLocaleString()}</div><div class="label">Total BR</div></div>
-    <div class="pill"><div class="value">${totalNA.toLocaleString()}</div><div class="label">Total NA</div></div>
-    <div class="pill"><div class="value">${total.toLocaleString()}</div><div class="label">Total geral</div></div>
-    <div class="pill"><div class="value">${avgBR.toLocaleString()}</div><div class="label">Média diária BR</div></div>
-    <div class="pill"><div class="value">${avgNA.toLocaleString()}</div><div class="label">Média diária NA</div></div>
+    <div class="pill"><div class="value">${valorAtualBR.toLocaleString()}</div><div class="label">Valor atual BR (baú)</div></div>
+    <div class="pill"><div class="value">${valorAtualNA.toLocaleString()}</div><div class="label">Valor atual NA (baú)</div></div>
+    <div class="pill"><div class="value ${getRendimentoClass(rendimentoBR)}">${formatRendimento(rendimentoBR)}</div><div class="label">Rendimento BR</div></div>
+    <div class="pill"><div class="value ${getRendimentoClass(rendimentoNA)}">${formatRendimento(rendimentoNA)}</div><div class="label">Rendimento NA</div></div>
+    <div class="pill"><div class="value ${getRendimentoClass(avgRendimentoBR)}">${formatRendimento(avgRendimentoBR)}</div><div class="label">Média diária BR</div></div>
+    <div class="pill"><div class="value ${getRendimentoClass(avgRendimentoNA)}">${formatRendimento(avgRendimentoNA)}</div><div class="label">Média diária NA</div></div>
     <div class="pill"><div class="value">${data.length}</div><div class="label">Registros no período</div></div>
   `;
 }
@@ -349,8 +414,8 @@ function onSubmitForm(e) {
     errorEl.textContent = 'Informe uma data válida no formato DD-MM-YYYY.';
     return;
   }
-  if (Number.isNaN(br) || br < 0 || Number.isNaN(na) || na < 0) {
-    errorEl.textContent = 'Informe valores numéricos maiores ou iguais a 0.';
+  if (Number.isNaN(br) || Number.isNaN(na)) {
+    errorEl.textContent = 'Informe valores numéricos válidos.';
     return;
   }
   errorEl.textContent = '';
@@ -384,7 +449,7 @@ function onEditRow(record) {
   if (newNA === null) return;
   const na = Number(newNA);
   const newNotes = prompt(`Editar notas para ${record.date}:`, String(record.notes || ''));
-  if (Number.isNaN(br) || br < 0 || Number.isNaN(na) || na < 0) {
+  if (Number.isNaN(br) || Number.isNaN(na)) {
     showToast('Valores inválidos.');
     return;
   }
