@@ -1,5 +1,5 @@
 /**
- * Alzes Tracker (BR & NA) – app.js
+ * Alzes Tracker (BR) – app.js
  *
  * Instruções rápidas:
  * - Os dados são salvos localmente no navegador, na chave: "alzes_records_v1".
@@ -8,7 +8,7 @@
  * - Para exportar backup JSON: clique em "Backup JSON" no topo.
  *
  * Estrutura do registro:
- * { date: 'DD-MM-YYYY', br: number, na: number, notes?: string }
+ * { date: 'DD-MM-YYYY', br: number, notes?: string }
  */
 
 // ========================= Constantes & Estado =========================
@@ -16,7 +16,7 @@ const STORAGE_KEY = 'alzes_records_v1';
 const THEME_KEY = 'alzes_theme_v1';
 
 let state = {
-  records: [],          // Array<{date, br, na, notes}>
+  records: [],          // Array<{date, br, notes}>
   filtered: [],         // Visão atual após filtros e modo de visualização
   sortDesc: true,       // true: mais recentes primeiro
   viewMode: 'daily',    // 'daily' | 'monthly'
@@ -88,7 +88,6 @@ function loadData() {
     return data.map(r => ({
       date: r.date,
       br: Number(r.br) || 0,
-      na: Number(r.na) || 0,
       notes: r.notes ? String(r.notes) : ''
     })).filter(r => parseDateString(r.date));
   } catch (e) {
@@ -159,13 +158,12 @@ function filterRecords(options = {}) {
   }
 
   if (viewMode === 'monthly') {
-    const map = new Map(); // key: YYYY-MM -> { date: label, br, na }
+    const map = new Map(); // key: YYYY-MM -> { date: label, br }
     for (const r of filtered) {
       const key = dateToKeyMonth(r.date);
       if (!key) continue;
-      const cur = map.get(key) || { date: key, br: 0, na: 0, notes: '' };
+      const cur = map.get(key) || { date: key, br: 0, notes: '' };
       cur.br += r.br;
-      cur.na += r.na;
       map.set(key, cur);
     }
     filtered = Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
@@ -179,11 +177,10 @@ function filterRecords(options = {}) {
 
 // ========================= Export / Import =========================
 function exportCSV(records) {
-  const headers = ['data', 'alzes_BR', 'alzes_NA', 'total', 'notas'];
+  const headers = ['data', 'alzes_BR', 'notas'];
   const lines = [headers.join(',')];
   for (const r of records) {
-    const total = r.br + r.na;
-    const row = [r.date, r.br, r.na, total, (r.notes || '').replace(/,/g, ';')];
+    const row = [r.date, r.br, (r.notes || '').replace(/,/g, ';')];
     lines.push(row.join(','));
   }
   const csv = lines.join('\n');
@@ -199,7 +196,6 @@ function parseCSV(text) {
   const colIdx = {
     date: cols.indexOf('data'),
     br: cols.indexOf('alzes_br'),
-    na: cols.indexOf('alzes_na'),
     notes: cols.indexOf('notas')
   };
   const out = [];
@@ -207,10 +203,9 @@ function parseCSV(text) {
     const parts = row.split(',');
     const date = parts[colIdx.date]?.trim();
     const br = Number(parts[colIdx.br] || 0);
-    const na = Number(parts[colIdx.na] || 0);
     const notes = (colIdx.notes >= 0 ? parts[colIdx.notes] : '') || '';
     if (!date || parseDateString(date) === null) continue;
-    out.push({ date, br, na, notes });
+    out.push({ date, br, notes });
   }
   return out;
 }
@@ -242,29 +237,17 @@ function renderTable() {
     const tdBr = document.createElement('td');
     tdBr.textContent = r.br.toLocaleString();
 
-    const tdNa = document.createElement('td');
-    tdNa.textContent = r.na.toLocaleString();
-
-    const tdTotal = document.createElement('td');
-    tdTotal.textContent = (r.br + r.na).toLocaleString();
-
     // Calcular rendimento do dia (diferença com o dia anterior)
     const tdRendimentoBR = document.createElement('td');
-    const tdRendimentoNA = document.createElement('td');
     let rendimentoBR = 0;
-    let rendimentoNA = 0;
     
     if (i < rows.length - 1) {
       const diaAnterior = rows[i + 1]; // próximo item na lista (mais antigo)
       rendimentoBR = r.br - diaAnterior.br;
-      rendimentoNA = r.na - diaAnterior.na;
     }
     
     tdRendimentoBR.textContent = rendimentoBR > 0 ? `+${rendimentoBR.toLocaleString()}` : rendimentoBR.toLocaleString();
     tdRendimentoBR.className = rendimentoBR > 0 ? 'positive' : rendimentoBR < 0 ? 'negative' : '';
-    
-    tdRendimentoNA.textContent = rendimentoNA > 0 ? `+${rendimentoNA.toLocaleString()}` : rendimentoNA.toLocaleString();
-    tdRendimentoNA.className = rendimentoNA > 0 ? 'positive' : rendimentoNA < 0 ? 'negative' : '';
 
     const tdNotes = document.createElement('td');
     tdNotes.textContent = r.notes || '';
@@ -284,7 +267,7 @@ function renderTable() {
     actions.append(editBtn, delBtn);
     tdActions.appendChild(actions);
 
-    tr.append(tdSel, tdDate, tdBr, tdNa, tdTotal, tdRendimentoBR, tdRendimentoNA, tdNotes, tdActions);
+    tr.append(tdSel, tdDate, tdBr, tdRendimentoBR, tdNotes, tdActions);
     tbody.appendChild(tr);
   }
 }
@@ -301,21 +284,17 @@ function renderSummary() {
   // Pegar o valor mais recente (primeiro da lista ordenada)
   const ultimoRegistro = data[0];
   const valorAtualBR = ultimoRegistro.br;
-  const valorAtualNA = ultimoRegistro.na;
-  const valorTotalAtual = valorAtualBR + valorAtualNA;
   
   // Calcular rendimento total (diferença entre o primeiro e último registro)
-  let rendimentoTotal = 0;
+  let rendimentoBR = 0;
   if (data.length > 1) {
     const primeiroRegistro = data[data.length - 1]; // último da lista (mais antigo)
-    const rendimentoBR = valorAtualBR - primeiroRegistro.br;
-    const rendimentoNA = valorAtualNA - primeiroRegistro.na;
-    rendimentoTotal = rendimentoBR + rendimentoNA;
+    rendimentoBR = valorAtualBR - primeiroRegistro.br;
   }
   
   // Calcular média de rendimento diário
   const count = data.length || 1;
-  const avgRendimento = Math.round(rendimentoTotal / count);
+  const avgRendimentoBR = Math.round(rendimentoBR / count);
   
   // Formatação para rendimento
   const formatRendimento = (value) => {
@@ -330,26 +309,10 @@ function renderSummary() {
     return '';
   };
 
-  // Calcular rendimento separado para BR e NA
-  let rendimentoBR = 0;
-  let rendimentoNA = 0;
-  if (data.length > 1) {
-    const primeiroRegistro = data[data.length - 1]; // último da lista (mais antigo)
-    rendimentoBR = valorAtualBR - primeiroRegistro.br;
-    rendimentoNA = valorAtualNA - primeiroRegistro.na;
-  }
-  
-  // Calcular média de rendimento diário separada
-  const avgRendimentoBR = Math.round(rendimentoBR / count);
-  const avgRendimentoNA = Math.round(rendimentoNA / count);
-
   wrap.innerHTML = `
     <div class="pill"><div class="value">${valorAtualBR.toLocaleString()}</div><div class="label">Valor atual BR (baú)</div></div>
-    <div class="pill"><div class="value">${valorAtualNA.toLocaleString()}</div><div class="label">Valor atual NA (baú)</div></div>
     <div class="pill"><div class="value ${getRendimentoClass(rendimentoBR)}">${formatRendimento(rendimentoBR)}</div><div class="label">Rendimento BR</div></div>
-    <div class="pill"><div class="value ${getRendimentoClass(rendimentoNA)}">${formatRendimento(rendimentoNA)}</div><div class="label">Rendimento NA</div></div>
     <div class="pill"><div class="value ${getRendimentoClass(avgRendimentoBR)}">${formatRendimento(avgRendimentoBR)}</div><div class="label">Média diária BR</div></div>
-    <div class="pill"><div class="value ${getRendimentoClass(avgRendimentoNA)}">${formatRendimento(avgRendimentoNA)}</div><div class="label">Média diária NA</div></div>
     <div class="pill"><div class="value">${data.length}</div><div class="label">Registros no período</div></div>
   `;
 }
@@ -363,13 +326,9 @@ function renderChart() {
 
   const labels = sorted.map(r => r.date);
   const dataBR = sorted.map(r => r.br);
-  const dataNA = sorted.map(r => r.na);
-  const dataTotal = sorted.map(r => r.br + r.na);
 
   const ds = [
     { label: 'BR', data: dataBR, borderColor: '#6aa1ff', backgroundColor: 'rgba(106,161,255,0.2)' },
-    { label: 'NA', data: dataNA, borderColor: '#63e2b7', backgroundColor: 'rgba(99,226,183,0.2)' },
-    { label: 'Total', data: dataTotal, borderColor: '#ffce5c', backgroundColor: 'rgba(255,206,92,0.2)' },
   ];
 
   if (chartInstance) {
@@ -405,7 +364,6 @@ function onSubmitForm(e) {
   e.preventDefault();
   const date = qs('#dateInput').value.trim();
   const br = Number(qs('#brInput').value);
-  const na = Number(qs('#naInput').value);
   const notes = qs('#notesInput').value.trim();
   const errorEl = qs('#formError');
 
@@ -414,13 +372,13 @@ function onSubmitForm(e) {
     errorEl.textContent = 'Informe uma data válida no formato DD-MM-YYYY.';
     return;
   }
-  if (Number.isNaN(br) || Number.isNaN(na)) {
-    errorEl.textContent = 'Informe valores numéricos válidos.';
+  if (Number.isNaN(br)) {
+    errorEl.textContent = 'Informe um valor numérico válido.';
     return;
   }
   errorEl.textContent = '';
 
-  addRecord({ date, br, na, notes });
+  addRecord({ date, br, notes });
   applyCurrentFilters();
   renderTable();
   renderSummary();
@@ -445,15 +403,12 @@ function onEditRow(record) {
   const newBR = prompt(`Editar Alzes BR para ${record.date}:`, String(record.br));
   if (newBR === null) return;
   const br = Number(newBR);
-  const newNA = prompt(`Editar Alzes NA para ${record.date}:`, String(record.na));
-  if (newNA === null) return;
-  const na = Number(newNA);
   const newNotes = prompt(`Editar notas para ${record.date}:`, String(record.notes || ''));
-  if (Number.isNaN(br) || Number.isNaN(na)) {
-    showToast('Valores inválidos.');
+  if (Number.isNaN(br)) {
+    showToast('Valor inválido.');
     return;
   }
-  editRecord(record.date, { br, na, notes: newNotes || '' });
+  editRecord(record.date, { br, notes: newNotes || '' });
   applyCurrentFilters();
   renderTable();
   renderSummary();
